@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 import torch
+from numpy import prod
 from torch import Tensor
 
 from auxiliary.settings import DEVICE
@@ -13,7 +14,7 @@ class WeightsEraser:
     def __init__(self):
         self.__device = DEVICE
         self.__path_to_model_dir, self.__path_to_val, self.__path_to_indices = "", "", ""
-        self.__curr_filename, self.__sal_type, self.__mode = "", "", ""
+        self.__curr_filename, self.__sal_type, self.__mode, self.__save_val = "", "", "", True
         self.__rankings = {"max": self.__max_ranking, "rand": self.__rand_ranking,
                            "grad": self.__grad_ranking, "grad_prod": self.__grad_prod_ranking}
 
@@ -25,6 +26,9 @@ class WeightsEraser:
 
     def set_path_to_model_dir(self, path: str):
         self.__path_to_model_dir = path
+
+    def set_save_val_state(self, state: bool):
+        self.__save_val = state
 
     def set_curr_filename(self, filename: str):
         self.__curr_filename = filename
@@ -46,6 +50,12 @@ class WeightsEraser:
         path_to_mask = os.path.join(self.__path_to_model_dir, "att", self.__sal_type, self.__curr_filename)
         return torch.from_numpy(np.load(path_to_mask, allow_pickle=True)).to(self.__device)
 
+    def __check_n(self, sal_mask: Tensor, n: int):
+        mask_size = prod(sal_mask.shape)
+        if n is None or n < 1 or n >= mask_size:
+            raise ValueError("Cannot remove n = {} weights from {} saliency mask! Mask size is: {}"
+                             .format(n, self.__sal_type, mask_size))
+
     def erase(self, saliency_mask: Tensor = None, n: int = 1) -> Tensor:
         """
         Zeroes out one weight in the input saliency mask according to the selected mode and logs erased value
@@ -57,6 +67,8 @@ class WeightsEraser:
         if saliency_mask is None:
             saliency_mask = self.__load_saliency_mask()
 
+        self.__check_n(saliency_mask, n)
+
         s = saliency_mask.shape
         saliency_mask = torch.flatten(saliency_mask)
 
@@ -66,7 +78,8 @@ class WeightsEraser:
 
         saliency_mask = saliency_mask.view(s)
 
-        self.__log_erasure(val, indices, n)
+        if self.__save_val:
+            self.__log_erasure(val, indices, n)
 
         return saliency_mask
 

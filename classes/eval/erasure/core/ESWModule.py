@@ -3,7 +3,7 @@ from typing import Tuple, Union, List
 
 from torch import nn
 
-from classes.eval.erasure.WeightsEraser import WeightsEraser
+from classes.eval.erasure.core.WeightsEraser import WeightsEraser
 
 
 class ESWModule(nn.Module):
@@ -50,6 +50,9 @@ class ESWModule(nn.Module):
     def set_curr_filename(self, filename: str):
         self._we.set_curr_filename(filename)
         self._curr_filename = filename
+
+    def set_save_val_state(self, save_val: bool):
+        self._we.set_save_val_state(save_val)
 
     def set_we_state(self, state: Union[bool, Tuple]):
         self._we_state = state
